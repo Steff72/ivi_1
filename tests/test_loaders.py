@@ -97,6 +97,22 @@ def test_load_mempool_hash_rate_parses_payload() -> None:
     assert any("mining/hashrate/1y" in url for url in session.requested_urls)
 
 
+def test_load_mempool_hash_rate_parses_wrapped_payload() -> None:
+    """Handle dictionary payloads that wrap the hash rate series."""
+
+    payload = {
+        "hashRate": [
+            {"timestamp": 1700000000, "hashrate": 395.1},
+            {"timestamp": 1700086400, "hashrate": 402.7},
+        ]
+    }
+    session = _FakeSession(payload)
+    frame = load_mempool_hash_rate(session=session)
+
+    assert len(frame) == 2
+    assert frame.loc[0, "metric"] == "hash_rate_eh_s"
+
+
 
 def test_load_mempool_hash_rate_rejects_missing_series() -> None:
     """Raise ValueError when mempool.space omits hash rate observations."""

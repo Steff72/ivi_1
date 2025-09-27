@@ -51,6 +51,8 @@ COINGECKO_MARKET_CHART_URL = (
     "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
 )
 
+MEMPOOL_HASHRATE_URL = "https://mempool.space/api/v1/mining/hashrate"
+
 
 MEMPOOL_HASHRATE_URL = "https://mempool.space/api/v1/mining/hashrate"
 
@@ -100,10 +102,43 @@ def load_mempool_hash_rate(
     response.raise_for_status()
 
     payload = response.json()
-    if not isinstance(payload, list) or not payload:
+
+    series: list[dict[str, Any]] | None = None
+    if isinstance(payload, list):
+        series = payload
+    elif isinstance(payload, dict):
+        candidate_keys = (
+            "hashrate",
+            "hashRate",
+            "data",
+            "series",
+            "result",
+            "items",
+        )
+        for key in candidate_keys:
+            value = payload.get(key)
+            if isinstance(value, list):
+                series = value
+                break
+        if series is None:
+            for value in payload.values():
+                if isinstance(value, list):
+                    series = value
+                    break
+                if isinstance(value, dict):
+                    nested = next(
+                        (sub for sub in value.values() if isinstance(sub, list)),
+                        None,
+                    )
+                    if nested is not None:
+                        series = nested
+                        break
+
+    if not series:
         raise ValueError("mempool.space response missing hash rate data")
 
-    frame = pd.DataFrame(payload)
+    frame = pd.DataFrame(series)
+
     if frame.empty:
         raise ValueError("mempool.space response empty")
 
