@@ -4,8 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+dash = ">=2.15"
+pandas = ">=2.2"
+numpy = ">=1.26"
 
 [dev-packages]
+pytest = ">=7.0"
 
 [requires]
-python_version = "3.9"
+python_version = "3.11"
