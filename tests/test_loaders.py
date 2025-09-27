@@ -93,6 +93,7 @@ def test_load_mempool_hash_rate_parses_payload() -> None:
 
     assert len(frame) == 2
     assert frame.loc[0, "metric"] == "hash_rate_eh_s"
+
     assert any("mining/hashrate/1y" in url for url in session.requested_urls)
 
 
@@ -110,6 +111,7 @@ def test_load_mempool_hash_rate_parses_wrapped_payload() -> None:
 
     assert len(frame) == 2
     assert frame.loc[0, "metric"] == "hash_rate_eh_s"
+
 
 
 def test_load_mempool_hash_rate_rejects_missing_series() -> None:

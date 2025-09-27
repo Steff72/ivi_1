@@ -54,6 +54,9 @@ COINGECKO_MARKET_CHART_URL = (
 MEMPOOL_HASHRATE_URL = "https://mempool.space/api/v1/mining/hashrate"
 
 
+MEMPOOL_HASHRATE_URL = "https://mempool.space/api/v1/mining/hashrate"
+
+
 def load_coingecko_price_history(
     *,
     days: int = 365,
@@ -135,6 +138,7 @@ def load_mempool_hash_rate(
         raise ValueError("mempool.space response missing hash rate data")
 
     frame = pd.DataFrame(series)
+
     if frame.empty:
         raise ValueError("mempool.space response empty")
 
