@@ -51,6 +51,7 @@ COINGECKO_MARKET_CHART_URL = (
     "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
 )
 
+
 MEMPOOL_HASHRATE_URL = "https://mempool.space/api/v1/mining/hashrate"
 
 
