@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bitcoin-onchain-dashboard"
+version = "0.1.0"
+description = "Interactive Bitcoin on-chain analytics dashboard"
+authors = [{name = "IVI Team"}]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dash>=2.15.0",
+    "pandas>=2.2.0",
+    "numpy>=1.26",
+]
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra"
