@@ -11,14 +11,17 @@ def create_layout() -> html.Div:
         className="app-shell",
         children=[
             dcc.Store(id="price-data-store"),
-            dcc.Interval(id="price-refresh", interval=24 * 60 * 60 * 1000, n_intervals=0),
+            dcc.Store(id="hashrate-data-store"),
+            dcc.Interval(
+                id="price-refresh", interval=24 * 60 * 60 * 1000, n_intervals=0
+            ),
             html.Header(html.H1("Bitcoin On-Chain Analytics")),
             html.Main(
                 children=[
                     html.Section(
                         children=[
                             html.P(
-                                "Interactive dashboard loading Bitcoin metrics from the CoinGecko API"
+                                "Interactive dashboard loading Bitcoin metrics from the CoinGecko and mempool.space APIs"
                             ),
                             dcc.Graph(id="price-chart"),
                             dcc.RangeSlider(

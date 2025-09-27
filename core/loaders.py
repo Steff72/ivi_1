@@ -26,7 +26,9 @@ class SupportsJSONResponse(Protocol):
 class SupportsGet(Protocol):
     """Protocol for objects supporting the ``requests.Session.get`` API."""
 
-    def get(self, url: str, *, timeout: float) -> SupportsJSONResponse:  # pragma: no cover
+    def get(
+        self, url: str, *, timeout: float
+    ) -> SupportsJSONResponse:  # pragma: no cover
         """Perform an HTTP GET request and return a JSON-capable response."""
 
 
@@ -48,6 +50,8 @@ def load_metric_csv(path: Path, metric: MetricId, source: str) -> MetricFrame:
 COINGECKO_MARKET_CHART_URL = (
     "https://api.coingecko.com/api/v3/coins/bitcoin/market_chart"
 )
+
+MEMPOOL_HASHRATE_URL = "https://mempool.space/api/v1/mining/hashrate"
 
 
 def load_coingecko_price_history(
@@ -77,5 +81,101 @@ def load_coingecko_price_history(
     frame["metric"] = "price_usd"
     frame["source"] = "CoinGecko API"
     tidy = frame[["date", "metric", "value", "source"]]
+    ordered = tidy.sort_values("date").reset_index(drop=True)
+    return MetricFrame(ordered)
+
+
+def load_mempool_hash_rate(
+    *, period: str = "1y", session: SupportsGet | None = None
+) -> MetricFrame:
+    """Fetch Bitcoin hash rate history from the mempool.space API."""
+
+    if not period:
+        raise ValueError("`period` must be a non-empty string")
+
+    http = session or requests.Session()
+    url = f"{MEMPOOL_HASHRATE_URL}/{period}"
+    response = http.get(url, timeout=10)
+    response.raise_for_status()
+
+    payload = response.json()
+
+    series: list[dict[str, Any]] | None = None
+    if isinstance(payload, list):
+        series = payload
+    elif isinstance(payload, dict):
+        candidate_keys = (
+            "hashrate",
+            "hashRate",
+            "data",
+            "series",
+            "result",
+            "items",
+        )
+        for key in candidate_keys:
+            value = payload.get(key)
+            if isinstance(value, list):
+                series = value
+                break
+        if series is None:
+            for value in payload.values():
+                if isinstance(value, list):
+                    series = value
+                    break
+                if isinstance(value, dict):
+                    nested = next(
+                        (sub for sub in value.values() if isinstance(sub, list)),
+                        None,
+                    )
+                    if nested is not None:
+                        series = nested
+                        break
+
+    if not series:
+        raise ValueError("mempool.space response missing hash rate data")
+
+    frame = pd.DataFrame(series)
+    if frame.empty:
+        raise ValueError("mempool.space response empty")
+
+    value_column = next(
+        (
+            column
+            for column in ("avgHashrate", "hashrate", "value")
+            if column in frame.columns
+        ),
+        None,
+    )
+    if value_column is None:
+        raise ValueError("mempool.space payload missing hash rate values")
+
+    time_column = next(
+        (column for column in ("time", "timestamp", "date") if column in frame.columns),
+        None,
+    )
+    if time_column is None:
+        raise ValueError("mempool.space payload missing timestamps")
+
+    raw_times = frame[time_column]
+    if pd.api.types.is_numeric_dtype(raw_times):
+        max_time = float(raw_times.max()) if not raw_times.empty else 0.0
+        unit = "ms" if max_time > 10**12 else "s"
+        dates = pd.to_datetime(raw_times, unit=unit, utc=True)
+    else:
+        dates = pd.to_datetime(raw_times, utc=True, errors="raise")
+
+    values = pd.to_numeric(frame[value_column], errors="coerce")
+    if values.isna().any():
+        raise ValueError("mempool.space payload contained invalid hash rate values")
+
+    tidy = pd.DataFrame(
+        {
+            "date": dates,
+            "metric": "hash_rate_eh_s",
+            "value": values.astype("float64"),
+            "source": "mempool.space API",
+        }
+    )
+
     ordered = tidy.sort_values("date").reset_index(drop=True)
     return MetricFrame(ordered)
