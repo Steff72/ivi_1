@@ -9,7 +9,11 @@ import pytest
 
 import requests
 
-from core.loaders import load_coingecko_price_history, load_metric_csv
+from core.loaders import (
+    load_coingecko_price_history,
+    load_mempool_hash_rate,
+    load_metric_csv,
+)
 
 
 def test_load_metric_csv_missing_file(tmp_path: Path) -> None:
@@ -29,11 +33,11 @@ def test_load_metric_csv_happy_path(tmp_path: Path) -> None:
 
 
 class _FakeResponse:
-    def __init__(self, payload: dict[str, object], status_code: int = 200) -> None:
+    def __init__(self, payload: object, status_code: int = 200) -> None:
         self._payload = payload
         self.status_code = status_code
 
-    def json(self) -> dict[str, object]:
+    def json(self) -> object:
         return self._payload
 
     def raise_for_status(self) -> None:
@@ -42,7 +46,7 @@ class _FakeResponse:
 
 
 class _FakeSession:
-    def __init__(self, payload: dict[str, object], status_code: int = 200) -> None:
+    def __init__(self, payload: object, status_code: int = 200) -> None:
         self._payload = payload
         self._status_code = status_code
         self.requested_urls: list[str] = []
@@ -75,3 +79,26 @@ def test_load_coingecko_price_history_rejects_missing_prices() -> None:
     session = _FakeSession({}, status_code=200)
     with pytest.raises(ValueError):
         load_coingecko_price_history(session=session)
+
+
+def test_load_mempool_hash_rate_parses_payload() -> None:
+    """Convert mempool.space hash rate payload into a MetricFrame."""
+
+    payload = [
+        {"time": 1700000000, "avgHashrate": 410.5},
+        {"time": 1700086400, "avgHashrate": 415.2},
+    ]
+    session = _FakeSession(payload)
+    frame = load_mempool_hash_rate(period="1y", session=session)
+
+    assert len(frame) == 2
+    assert frame.loc[0, "metric"] == "hash_rate_eh_s"
+    assert any("mining/hashrate/1y" in url for url in session.requested_urls)
+
+
+def test_load_mempool_hash_rate_rejects_missing_series() -> None:
+    """Raise ValueError when mempool.space omits hash rate observations."""
+
+    session = _FakeSession([], status_code=200)
+    with pytest.raises(ValueError):
+        load_mempool_hash_rate(session=session)
