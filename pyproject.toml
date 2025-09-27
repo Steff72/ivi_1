@@ -13,6 +13,7 @@ dependencies = [
     "dash>=2.15.0",
     "pandas>=2.2.0",
     "numpy>=1.26",
+    "requests>=2.31",
 ]
 
 [tool.black]
